@@ -1,0 +1,1562 @@
+
+import tkinter as tk
+from tkinter import ttk, messagebox
+import mysql.connector
+from tkinter import filedialog
+from datetime import datetime
+import pandas as pd
+import os
+import fitz
+from PIL import Image, ImageTk
+from reportlab.pdfgen import canvas
+
+
+CATALOGO = [
+    ("Papel china rosa", 5),
+    ("Papel china azul", 5),
+    ("Papel china amarillo", 5),
+    ("Papel china verde", 5),
+    ("Papel china morado", 5),
+    ("Papel crepé", 8),
+    ("Papel metálico", 15),
+    ("Papel holográfico", 18),
+    ("Papel celofán", 10),
+    ("Papel lustre", 8),
+    ("Papel corrugado", 15),
+    ("Papel kraft", 15),
+    ("Papel albanene", 15),
+    ("Papel vegetal", 12),
+    ("Papel tornasol", 18),
+    ("Cartulina blanca", 5),
+    ("Cartulina negra", 10),
+    ("Cartulina fluorescente", 15),
+    ("Cartulina metálica", 18),
+    ("Cartulina iris", 12),
+    ("Cartulina opalina", 15),
+    ("Cartulina texturizada", 20),
+    ("Cartulina corrugada", 18),
+    ("Cartón cascarón", 16),
+    ("Cartón ilustración", 20),
+    ("Foami blanco", 5),
+    ("Foami negro", 5),
+    ("Foami diamantado", 7),
+    ("Foami estampado", 18),
+    ("Foami moldeable", 25),
+    ("Listón satinado", 12),
+    ("Listón de organza", 15),
+    ("Listón decorativo", 18),
+    ("Listón navideño", 20),
+    ("Listón de yute", 15),
+    ("Encaje decorativo", 18),
+    ("Tul decorativo", 15),
+    ("Tela de fieltro", 20),
+    ("Tela de yute", 25),
+    ("Diamantina fina", 12),
+    ("Diamantina gruesa", 15),
+    ("Diamantina holográfica", 18),
+    ("Escarcha de colores", 15),
+    ("Confeti decorativo", 12),
+    ("Perlas adhesivas", 20),
+    ("Piedritas decorativas", 18),
+    ("Lentejuelas", 15),
+    ("Pompones pequeños", 3),
+    ("Pompones grandes", 5),
+    ("Plumas decorativas", 18),
+    ("Ojitos móviles", 2),
+    ("Figuras de madera", 20),
+    ("Letras de madera", 25),
+    ("Números de madera", 20),
+    ("Palitos de madera", 15),
+    ("Abatelenguas de colores", 20),
+    ("Palitos de paleta", 15),
+    ("Silicón líquido", 18),
+    ("Barras de silicón", 3),
+    ("Pegamento blanco", 15),
+    ("Pegamento con diamantina", 18),
+    ("Pegamento en barra", 15),
+    ("Cinta doble cara", 20),
+    ("Cinta decorativa", 15),
+    ("Cinta washi", 25),
+    ("Cinta de colores", 5),
+    ("Cinta masking", 18),
+    ("Tijeras escolares", 25),
+    ("Tijeras decorativas", 35),
+    ("Perforadora de figuras", 45),
+    ("Perforadora de corazones", 40),
+    ("Perforadora de estrellas", 40),
+    ("Cutter escolar", 20),
+    ("Base para corte", 120),
+    ("Plantillas de figuras", 30),
+    ("Tinta para sellos", 25),
+    ("Pintura acrílica", 25),
+    ("Pintura vinílica", 30),
+    ("Acuarelas", 40),
+    ("Pinceles escolares", 35),
+    ("Esponjas para pintar", 18),
+    ("Rodillo para pintura", 30),
+    ("Plastilina de colores", 20),
+    ("Arcilla escolar", 50),
+    ("Alambre decorativo", 18),
+    ("Limpiapipas", 2),
+    ("Hilo de colores", 15),
+    ("Hilo de yute", 18),
+    ("Estambre de colores", 25),
+    ("Stickers decorativos", 20),
+    ("Etiquetas adhesivas", 15),
+    ("Troqueles decorativos", 40),
+    ("Notas adhesivas", 20),
+    ("Marcadores de colores", 45),
+    ("Plumones permanentes", 35),
+    ("Colores de madera", 45),
+    ("Crayones", 30),
+    ("Lápices de dibujo", 15),
+    ("Goma moldeable para dibujo", 20)
+]
+
+# ==========================================
+# CONEXION A MYSQL
+# ==========================================
+
+def conectar():
+    try:
+        return mysql.connector.connect(
+            host="localhost",
+            user="root",
+            passwd="",
+            database="negocio"
+        )
+    except mysql.connector.Error as e:
+        messagebox.showerror("Error de conexión", str(e))
+        return None
+
+
+def ejecutar_consulta(sql, parametros=(), obtener=False):
+    con = conectar()
+    if con is None:
+        return None
+
+    cursor = None
+    try:
+        cursor = con.cursor()
+        cursor.execute(sql, parametros)
+
+        if obtener:
+            return cursor.fetchall()
+
+        con.commit()
+        return cursor.rowcount
+
+    except mysql.connector.Error as e:
+        messagebox.showerror("Error MySQL", str(e))
+        return None
+
+    finally:
+        if cursor:
+            cursor.close()
+        con.close()
+
+
+# ==========================================
+# FUNCIONES GENERALES
+# ==========================================
+
+def limpiar_contenido():
+    for widget in marco_contenido.winfo_children():
+        widget.destroy()
+
+
+def crear_titulo(marco, texto):
+    tk.Label(
+        marco,
+        text=texto,
+        font=("Arial", 22, "bold"),
+        bg="#FFFFFF",
+        fg="#674188",
+        padx=20,
+        pady=15
+    ).pack(fill="x", pady=(10, 20))
+
+
+def crear_boton(marco, texto, funcion):
+    return tk.Button(
+        marco,
+        text=texto,
+        command=funcion,
+        width=20,
+        height=2,
+        bg="#674188",
+        fg="white",
+        font=("Arial", 11, "bold"),
+        activebackground="#B794F4",
+        activeforeground="white",
+        relief="flat",
+        bd=0
+    )
+
+
+# ==========================================
+# INICIO
+# ==========================================
+
+def mostrar_inicio():
+    limpiar_contenido()
+    marco_contenido.configure(bg="#F3E8FF")
+
+    encabezado = tk.Frame(
+        marco_contenido,
+        bg="#FFFFFF",
+        height=100
+    )
+    encabezado.pack(fill="x")
+
+    tk.Label(
+        encabezado,
+        text="PAPELERÍA",
+        font=("Arial", 32, "bold"),
+        bg="#FFFFFF",
+        fg="#674188"
+    ).pack(pady=20)
+
+    tk.Frame(
+        marco_contenido,
+        bg="#C8A2C8",
+        height=5
+    ).pack(fill="x")
+
+    tk.Label(
+        marco_contenido,
+        text="¡BIENVENIDOS!",
+        font=("Arial", 32, "bold"),
+        bg="#F3E8FF",
+        fg="#512B81"
+    ).pack(pady=(35, 5))
+
+    tk.Label(
+        marco_contenido,
+        text="Todo lo que necesitas para aprender y crear",
+        font=("Arial", 15),
+        bg="#F3E8FF",
+        fg="#9F73AB"
+    ).pack(pady=5)
+
+    decoracion = tk.Frame(
+        marco_contenido,
+        bg="#F3E8FF"
+    )
+    decoracion.pack(pady=30)
+
+    for columna, emoji in enumerate(["✏️", "📚", "📒", "🖍️"]):
+        tk.Label(
+            decoracion,
+            text=emoji,
+            font=("Arial", 45),
+            bg="#F3E8FF"
+        ).grid(row=0, column=columna, padx=15)
+
+    tk.Label(
+        marco_contenido,
+        text="Calidad, creatividad y buenos precios",
+        font=("Arial", 17, "bold"),
+        bg="#E2CFEA",
+        fg="#512B81",
+        padx=25,
+        pady=15
+    ).pack(pady=15)
+
+    tk.Label(
+        marco_contenido,
+        text="¡Gracias por visitarnos!",
+        font=("Arial", 13, "italic"),
+        bg="#F3E8FF",
+        fg="#674188"
+    ).pack(pady=10)
+
+
+# ==========================================
+# PRODUCTOS
+# ==========================================
+
+def mostrar_productos():
+    def cargar_catalogo():
+        if not messagebox.askyesno(
+            "Confirmar",
+            "¿Deseas cargar los 99 productos del catálogo?"
+        ):
+            return
+
+        con = conectar()
+
+        if con is None:
+            return
+
+        cursor = None
+
+        try:
+            cursor = con.cursor()
+            agregados = 0
+
+            for codigo, (nombre, precio) in enumerate(CATALOGO, start=1):
+
+                # Revisar si ya existe en productos
+                cursor.execute(
+                    "SELECT pro_codigo FROM producto WHERE pro_codigo=%s",
+                    (codigo,)
+                )
+
+                existe = cursor.fetchone()
+
+                if not existe:
+                    cursor.execute(
+                        """
+                        INSERT INTO producto
+                        (pro_codigo, pro_nombre, pro_descripcion,
+                         pro_costo, pro_precio, pro_categoria)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """,
+                        (codigo, nombre, nombre, 0, precio, "Papelería")
+                    )
+                    agregados += 1
+
+                # Revisar si ya existe en inventario
+                cursor.execute("""
+                    INSERT INTO existencias
+                    (PRO_CODIGO, PRO_PRODUC, PRO_PRECIO, PRO_STOCK)
+                    VALUES (%s, %s, %s, %s)
+                """, (codigo, nombre, precio, 15))
+
+                existe_inventario = cursor.fetchone()
+
+                if not existe_inventario:
+                    cursor.execute(
+                        """
+                        INSERT INTO existencias
+                        (PRO_CODIGO, PRO_PRODUC, PRO_PRECIO, PRO_STOCK)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (codigo, nombre, precio, 0)
+                    )
+
+            con.commit()
+
+            messagebox.showinfo(
+                "Catálogo cargado",
+                f"Se agregaron {agregados} productos nuevos.\n"
+                "El inventario también fue actualizado."
+            )
+
+            cargar_productos()
+
+        except mysql.connector.Error as e:
+            con.rollback()
+            messagebox.showerror("Error", str(e))
+
+        finally:
+            if cursor:
+                cursor.close()
+            con.close()
+    limpiar_contenido()
+    marco_contenido.configure(bg="#F3E8FF")
+    crear_titulo(marco_contenido, "GESTIÓN DE PRODUCTOS")
+
+    formulario = tk.Frame(marco_contenido, bg="#F3E8FF")
+    formulario.pack(fill="x", padx=30)
+
+    campos = [
+        ("Código", "codigo"),
+        ("Nombre", "nombre"),
+        ("Descripción", "descripcion"),
+        ("Costo de compra", "costo"),
+        ("Precio de venta", "precio"),
+        ("Categoría", "categoria")
+    ]
+
+    cajas = {}
+
+    for i, (texto, clave) in enumerate(campos):
+        columna = 0 if i < 3 else 2
+        fila = i if i < 3 else i - 3
+
+        tk.Label(
+            formulario,
+            text=texto,
+            bg="#F3E8FF",
+            fg="#512B81",
+            font=("Arial", 10, "bold")
+        ).grid(row=fila, column=columna, padx=10, pady=10)
+
+        caja = tk.Entry(formulario, width=25)
+        caja.grid(row=fila, column=columna + 1, padx=10, pady=10)
+        cajas[clave] = caja
+
+    tabla = ttk.Treeview(
+        marco_contenido,
+        columns=("codigo", "nombre", "descripcion",
+                 "costo", "precio", "categoria"),
+        show="headings",
+        height=12
+    )
+
+    encabezados = [
+        ("codigo", "CÓDIGO", 70),
+        ("nombre", "NOMBRE", 150),
+        ("descripcion", "DESCRIPCIÓN", 200),
+        ("costo", "COSTO", 100),
+        ("precio", "PRECIO", 100),
+        ("categoria", "CATEGORÍA", 130)
+    ]
+
+    for columna, titulo, ancho in encabezados:
+        tabla.heading(columna, text=titulo)
+        tabla.column(columna, width=ancho, anchor="center")
+
+    tabla.pack(fill="x", padx=30, pady=15)
+
+    def limpiar():
+        for caja in cajas.values():
+            caja.delete(0, tk.END)
+
+    def cargar_productos():
+        tabla.delete(*tabla.get_children())
+
+        filas = ejecutar_consulta(
+            """
+            SELECT pro_codigo, pro_nombre, pro_descripcion,
+                   pro_costo, pro_precio, pro_categoria
+            FROM producto
+            ORDER BY pro_codigo
+            """,
+            obtener=True
+        )
+
+        if filas is not None:
+            for fila in filas:
+                tabla.insert("", tk.END, values=fila)
+
+    def registrar():
+        nombre = cajas["nombre"].get().strip()
+        descripcion = cajas["descripcion"].get().strip()
+        costo = cajas["costo"].get().strip()
+        precio = cajas["precio"].get().strip()
+        categoria = cajas["categoria"].get().strip()
+
+        if not all([nombre, descripcion, costo, precio, categoria]):
+            messagebox.showwarning("Aviso", "Completa todos los campos.")
+            return
+
+        try:
+            costo = int(costo)
+            precio = int(precio)
+
+            if costo < 0 or precio < 0:
+                raise ValueError
+
+        except ValueError:
+            messagebox.showwarning("Aviso", "Precios inválidos.")
+            return
+
+        resultado = ejecutar_consulta(
+            """
+            INSERT INTO producto
+            (pro_nombre, pro_descripcion, pro_costo,
+            pro_precio, pro_categoria)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (nombre, descripcion, costo, precio, categoria)
+        )
+
+        if resultado is not None:
+            messagebox.showinfo("Éxito", "Producto registrado.")
+            limpiar()
+            cargar_productos()
+    def buscar():
+        codigo = cajas["codigo"].get().strip()
+
+        if not codigo.isdigit():
+            messagebox.showwarning("Aviso", "Ingresa un código válido.")
+            return
+
+        filas = ejecutar_consulta(
+            """
+            SELECT pro_codigo, pro_nombre, pro_descripcion,
+                   pro_costo, pro_precio, pro_categoria
+            FROM producto
+            WHERE pro_codigo=%s
+            """,
+            (int(codigo),),
+            obtener=True
+        )
+
+        tabla.delete(*tabla.get_children())
+
+        if filas is not None:
+            for fila in filas:
+                tabla.insert("", tk.END, values=fila)
+
+            if filas:
+                seleccionar_valores(filas[0])
+            else:
+                messagebox.showinfo("Aviso", "Producto no encontrado.")
+
+    def seleccionar_valores(valores):
+        limpiar()
+        for clave, valor in zip(
+            ["codigo", "nombre", "descripcion",
+             "costo", "precio", "categoria"],
+            valores
+        ):
+            cajas[clave].insert(0, str(valor))
+
+    def actualizar():
+        codigo = cajas["codigo"].get().strip()
+        nombre = cajas["nombre"].get().strip()
+        descripcion = cajas["descripcion"].get().strip()
+        costo = cajas["costo"].get().strip()
+        precio = cajas["precio"].get().strip()
+        categoria = cajas["categoria"].get().strip()
+
+        if not codigo.isdigit() or not all([
+            nombre, descripcion, costo, precio, categoria
+        ]):
+            messagebox.showwarning("Aviso", "Completa todos los campos.")
+            return
+
+        try:
+            costo = float(costo)
+            precio = float(precio)
+            if costo < 0 or precio < 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showwarning("Aviso", "Precios no válidos.")
+            return
+
+        resultado = ejecutar_consulta(
+            """
+            UPDATE producto
+            SET pro_nombre=%s, pro_descripcion=%s,
+                pro_costo=%s, pro_precio=%s, pro_categoria=%s
+            WHERE pro_codigo=%s
+            """,
+            (nombre, descripcion, costo, precio, categoria, int(codigo))
+        )
+
+        if resultado is not None:
+            messagebox.showinfo("Éxito", "Producto actualizado.")
+            cargar_productos()
+
+    def eliminar():
+        codigo = cajas["codigo"].get().strip()
+
+        if not codigo.isdigit():
+            messagebox.showwarning("Aviso", "Ingresa un código válido.")
+            return
+
+        if not messagebox.askyesno("Confirmar", "¿Eliminar producto?"):
+            return
+
+        resultado = ejecutar_consulta(
+            "DELETE FROM producto WHERE pro_codigo=%s",
+            (int(codigo),)
+        )
+
+        if resultado is not None:
+            messagebox.showinfo("Resultado", "Operación realizada.")
+            limpiar()
+            cargar_productos()
+    def seleccionar_fila(event):
+        seleccion = tabla.selection()
+
+        if seleccion:
+            fila = tabla.item(seleccion[0], "values")
+
+            cajas["nombre"].delete(0, tk.END)
+            cajas["nombre"].insert(0, fila[1])
+
+            cajas["descripcion"].delete(0, tk.END)
+            cajas["descripcion"].insert(0, fila[2])
+
+            cajas["costo"].delete(0, tk.END)
+            cajas["costo"].insert(0, fila[3])
+
+            cajas["precio"].delete(0, tk.END)
+            cajas["precio"].insert(0, fila[4])
+
+            cajas["categoria"].delete(0, tk.END)
+            cajas["categoria"].insert(0, fila[5])
+        tabla.bind("<<TreeviewSelect>>", seleccionar_fila)
+
+    botones = tk.Frame(marco_contenido, bg="#F3E8FF")
+    botones.pack(pady=10)
+
+    for texto, funcion in [
+        ("Registrar", registrar),
+        ("Mostrar", cargar_productos),
+        ("Buscar", buscar),
+        ("Actualizar", actualizar),
+        ("Eliminar", eliminar),
+        ("Limpiar", limpiar),
+        ("Cargar catálogo", cargar_catalogo)
+    ]:
+        tk.Button(
+            botones, text=texto, width=12,
+            command=funcion, bg="#674188", fg="white"
+        ).pack(side="left", padx=5)
+
+    cargar_productos()
+
+
+# ==========================================
+# FUNCION PARA REGISTRAR UNA VENTA
+# ==========================================
+# ==========================================
+# GENERAR TICKET DE VENTA
+# ==========================================
+
+# ==========================================
+# TICKET DENTRO DEL PROGRAMA
+# ==========================================
+
+def generar_ticket(numero, nombre, codigo, precio, cantidad, total):
+
+    fecha = datetime.now().strftime("%d/%m/%Y")
+    hora = datetime.now().strftime("%H:%M:%S")
+
+    ticket = f"""
+================================
+           PAPELERIA
+================================
+
+         TICKET DE VENTA
+
+Venta No.: {numero}
+
+Fecha: {fecha}
+Hora: {hora}
+
+--------------------------------
+Codigo:       {codigo}
+Producto:     {nombre}
+Precio:       ${float(precio):.2f}
+Cantidad:     {cantidad}
+--------------------------------
+
+TOTAL A PAGAR: ${float(total):.2f}
+
+================================
+       ¡GRACIAS POR SU COMPRA!
+================================
+
+          Vuelva pronto :)
+"""
+
+    ventana_ticket = tk.Toplevel(marco_contenido.winfo_toplevel())
+    ventana_ticket.title("Ticket de venta")
+    ventana_ticket.geometry("430x570")
+    ventana_ticket.configure(bg="#F3E8FF")
+    ventana_ticket.resizable(False, False)
+
+    ventana_ticket.transient(marco_contenido.winfo_toplevel())
+
+    tk.Label(
+        ventana_ticket,
+        text="VENTA REALIZADA",
+        font=("Arial", 19, "bold"),
+        bg="#F3E8FF",
+        fg="#674188"
+    ).pack(pady=12)
+
+    marco_ticket = tk.Frame(
+        ventana_ticket,
+        bg="white",
+        bd=2,
+        relief="solid"
+    )
+    marco_ticket.pack(padx=25, pady=5, fill="both", expand=True)
+
+    texto_ticket = tk.Text(
+        marco_ticket,
+        font=("Courier New", 10),
+        bg="white",
+        fg="#333333",
+        relief="flat",
+        padx=15,
+        pady=15,
+        wrap="none"
+    )
+    texto_ticket.pack(fill="both", expand=True)
+
+    texto_ticket.insert("1.0", ticket)
+    texto_ticket.config(state="disabled")
+
+    def guardar_ticket():
+        archivo = filedialog.asksaveasfilename(
+            parent=ventana_ticket,
+            title="Guardar ticket",
+            defaultextension=".txt",
+            filetypes=[("Archivo de texto", "*.txt")],
+            initialfile=f"Ticket_Venta_{numero}.txt"
+        )
+
+        if archivo:
+            with open(archivo, "w", encoding="utf-8") as f:
+                f.write(ticket)
+
+            messagebox.showinfo(
+                "Éxito",
+                "Ticket guardado correctamente.",
+                parent=ventana_ticket
+            )
+
+    def imprimir_ticket():
+        archivo = filedialog.asksaveasfilename(
+            parent=ventana_ticket,
+            title="Guardar ticket para imprimir",
+            defaultextension=".txt",
+            filetypes=[("Archivo de texto", "*.txt")],
+            initialfile=f"Ticket_Venta_{numero}.txt"
+        )
+
+        if archivo:
+            with open(archivo, "w", encoding="utf-8") as f:
+                f.write(ticket)
+
+            try:
+                if os.name == "nt":
+                    os.startfile(archivo, "print")
+                    messagebox.showinfo(
+                        "Imprimir",
+                        "Se envió el ticket a la impresora.",
+                        parent=ventana_ticket
+                    )
+                else:
+                    messagebox.showinfo(
+                        "Ticket guardado",
+                        "Abre el archivo guardado para imprimirlo.",
+                        parent=ventana_ticket
+                    )
+
+            except Exception as e:
+                messagebox.showerror(
+                    "Error",
+                    f"No se pudo imprimir: {e}",
+                    parent=ventana_ticket
+                )
+
+    botones = tk.Frame(
+        ventana_ticket,
+        bg="#F3E8FF"
+    )
+    botones.pack(pady=12)
+
+    tk.Button(
+        botones,
+        text="GUARDAR",
+        command=guardar_ticket,
+        bg="#674188",
+        fg="white",
+        width=13,
+        height=2,
+        font=("Arial", 10, "bold")
+    ).pack(side="left", padx=5)
+
+    tk.Button(
+        botones,
+        text="IMPRIMIR",
+        command=imprimir_ticket,
+        bg="#9F73AB",
+        fg="white",
+        width=13,
+        height=2,
+        font=("Arial", 10, "bold")
+    ).pack(side="left", padx=5)
+
+    tk.Button(
+        botones,
+        text="CERRAR",
+        command=ventana_ticket.destroy,
+        bg="#512B81",
+        fg="white",
+        width=13,
+        height=2,
+        font=("Arial", 10, "bold")
+    ).pack(side="left", padx=5)
+def realizar_venta(codigo, cantidad):
+
+    if not codigo.isdigit() or not cantidad.isdigit() or int(cantidad) <= 0:
+        messagebox.showwarning("Aviso", "Código o cantidad inválidos.")
+        return False
+
+    con = conectar()
+
+    if con is None:
+        return False
+
+    cursor = None
+
+    try:
+        cursor = con.cursor()
+
+        cursor.execute(
+            """
+            SELECT PRO_PRODUC, PRO_PRECIO, PRO_STOCK
+            FROM existencias
+            WHERE PRO_CODIGO=%s
+            """,
+            (int(codigo),)
+        )
+
+        producto = cursor.fetchone()
+
+        if producto is None:
+            messagebox.showwarning("Aviso", "Producto no encontrado.")
+            return False
+
+        nombre, precio, stock = producto
+        cantidad = int(cantidad)
+
+        if stock < cantidad:
+            messagebox.showwarning(
+                "Stock insuficiente",
+                f"Stock disponible: {stock}"
+            )
+            return False
+
+        total = float(precio) * cantidad
+
+        cursor.execute(
+            """
+            INSERT INTO ventas
+            (pro_codigo, pro_nombre, pro_precio,
+             pro_cantidad, pro_total)
+            VALUES (%s,%s,%s,%s,%s)
+            """,
+            (int(codigo), nombre, precio, cantidad, total)
+        )
+
+        numero_venta = cursor.lastrowid
+
+        cursor.execute(
+            """
+            UPDATE existencias
+            SET pro_stock = pro_stock - %s
+            WHERE pro_codigo = %s
+            """,
+            (cantidad, int(codigo))
+        )
+
+        con.commit()
+
+        generar_ticket(
+            numero_venta, nombre, codigo,
+            precio, cantidad, total
+        )
+
+        messagebox.showinfo(
+            "Venta exitosa",
+            f"Producto: {nombre}\n"
+            f"Cantidad: {cantidad}\n"
+            f"TOTAL: ${total:.2f}"
+        )
+
+        return True
+
+    except mysql.connector.Error as e:
+        con.rollback()
+        messagebox.showerror("Error de venta", str(e))
+        return False
+
+    finally:
+        if cursor:
+            cursor.close()
+        con.close()
+
+
+# ==========================================
+# INVENTARIO
+# ==========================================
+
+def INVENTARIO():
+    limpiar_contenido()
+    marco_contenido.configure(bg="#F3E8FF")
+    crear_titulo(marco_contenido, "INVENTARIOS")
+
+    formulario = tk.Frame(marco_contenido, bg="#F3E8FF")
+    formulario.pack(fill="x", padx=30, pady=10)
+
+    etiquetas = [
+        ("Código", "codigo"),
+        ("Producto", "nombre"),
+        ("Precio", "precio"),
+        ("Stock", "stock")
+    ]
+
+    cajas = {}
+
+    for i, (texto, clave) in enumerate(etiquetas):
+        tk.Label(
+            formulario,
+            text=texto,
+            bg="#F3E8FF",
+            fg="#512B81",
+            font=("Arial", 10, "bold")
+        ).grid(row=0, column=i*2, padx=8, pady=10)
+
+        caja = tk.Entry(formulario, width=18)
+        caja.grid(row=0, column=i*2+1, padx=8, pady=10)
+        cajas[clave] = caja
+
+    # TABLA DE INVENTARIO
+
+    tabla = ttk.Treeview(
+        marco_contenido,
+        columns=("codigo", "nombre", "precio", "stock"),
+        show="headings",
+        height=13
+    )
+
+    encabezados = [
+        ("codigo", "CÓDIGO", 100),
+        ("nombre", "PRODUCTO", 300),
+        ("precio", "PRECIO", 150),
+        ("stock", "STOCK", 150)
+    ]
+
+    for columna, titulo, ancho in encabezados:
+        tabla.heading(columna, text=titulo)
+        tabla.column(columna, width=ancho, anchor="center")
+
+    tabla.pack(fill="x", padx=30, pady=15)
+
+    # LIMPIAR CAMPOS
+
+    def limpiar():
+        for caja in cajas.values():
+            caja.delete(0, tk.END)
+
+    # MOSTRAR INVENTARIO
+
+    def cargar_inventario():
+        tabla.delete(*tabla.get_children())
+
+        filas = ejecutar_consulta(
+            """
+            SELECT PRO_CODIGO, PRO_PRODUC, PRO_PRECIO, PRO_STOCK
+            FROM existencias
+            ORDER BY PRO_CODIGO
+            """,
+            obtener=True
+        )
+
+        if filas is not None:
+            for fila in filas:
+                tabla.insert("", tk.END, values=fila)
+
+    # SELECCIONAR PRODUCTO
+
+    def seleccionar_fila(event=None):
+        seleccion = tabla.selection()
+
+        if not seleccion:
+            return
+
+        valores = tabla.item(seleccion[0], "values")
+
+        for clave, valor in zip(
+            ["codigo", "nombre", "precio", "stock"],
+            valores
+        ):
+            cajas[clave].delete(0, tk.END)
+            cajas[clave].insert(0, str(valor))
+
+    # INSERTAR PRODUCTO
+
+    def insertar():
+        nombre = cajas["nombre"].get().strip()
+        precio = cajas["precio"].get().strip()
+        stock = cajas["stock"].get().strip()
+
+        if not nombre or not precio or not stock:
+            messagebox.showwarning(
+                "Aviso",
+                "Completa todos los campos."
+            )
+            return
+
+        try:
+            precio = float(precio)
+            stock = int(stock)
+
+            if precio < 0 or stock < 0:
+                raise ValueError
+
+        except ValueError:
+            messagebox.showwarning(
+                "Aviso",
+                "Precio o stock inválido."
+            )
+            return
+
+        resultado = ejecutar_consulta(
+            """
+            INSERT INTO existencias
+            (PRO_PRODUC, PRO_PRECIO, PRO_STOCK)
+            VALUES (%s, %s, %s)
+            """,
+            (nombre, precio, stock)
+        )
+
+        if resultado is not None:
+            messagebox.showinfo(
+                "Éxito",
+                "Producto agregado correctamente."
+            )
+            limpiar()
+            cargar_inventario()
+
+    # BUSCAR PRODUCTO
+
+    def buscar():
+        codigo = cajas["codigo"].get().strip()
+
+        if not codigo.isdigit():
+            messagebox.showwarning(
+                "Aviso",
+                "Ingresa un código válido."
+            )
+            return
+
+        filas = ejecutar_consulta(
+            """
+            SELECT pro_codigo, pro_nombre, pro_precio, pro_stock
+            FROM existencias
+            WHERE pro_codigo=%s
+            """,
+            (int(codigo),),
+            obtener=True
+        )
+
+        tabla.delete(*tabla.get_children())
+
+        if filas is not None:
+            for fila in filas:
+                tabla.insert("", tk.END, values=fila)
+
+            if filas:
+                seleccionar_valores(filas[0])
+            else:
+                messagebox.showinfo(
+                    "Aviso",
+                    "Producto no encontrado."
+                )
+
+    # CARGAR DATOS EN LOS CAMPOS
+
+    def seleccionar_valores(valores):
+        for clave, valor in zip(
+            ["codigo", "nombre", "precio", "stock"],
+            valores
+        ):
+            cajas[clave].delete(0, tk.END)
+            cajas[clave].insert(0, str(valor))
+
+    # ACTUALIZAR PRODUCTO
+
+    def actualizar():
+        codigo = cajas["codigo"].get().strip()
+        nombre = cajas["nombre"].get().strip()
+        precio = cajas["precio"].get().strip()
+        stock = cajas["stock"].get().strip()
+
+        if not codigo.isdigit() or not nombre or not precio or not stock:
+            messagebox.showwarning(
+                "Aviso",
+                "Completa todos los campos."
+            )
+            return
+
+        try:
+            precio = float(precio)
+            stock = int(stock)
+
+            if precio < 0 or stock < 0:
+                raise ValueError
+
+        except ValueError:
+            messagebox.showwarning(
+                "Aviso",
+                "Precio o stock inválido."
+            )
+            return
+
+        resultado = ejecutar_consulta(
+            """
+            UPDATE existencias
+            SET pro_nombre=%s,
+                pro_precio=%s,
+                pro_stock=%s
+            WHERE pro_codigo=%s
+            """,
+            (nombre, precio, stock, int(codigo))
+        )
+
+        if resultado is not None:
+            messagebox.showinfo(
+                "Éxito",
+                "Inventario actualizado."
+            )
+            limpiar()
+            cargar_inventario()
+
+    # ELIMINAR PRODUCTO
+
+    def eliminar():
+        codigo = cajas["codigo"].get().strip()
+
+        if not codigo.isdigit():
+            messagebox.showwarning(
+                "Aviso",
+                "Ingresa un código válido."
+            )
+            return
+
+        confirmar = messagebox.askyesno(
+            "Confirmar",
+            "¿Deseas eliminar este producto?"
+        )
+
+        if not confirmar:
+            return
+
+        resultado = ejecutar_consulta(
+            "DELETE FROM existencias WHERE pro_codigo=%s",
+            (int(codigo),)
+        )
+
+        if resultado is not None:
+            messagebox.showinfo(
+                "Éxito",
+                "Producto eliminado."
+            )
+            limpiar()
+            cargar_inventario()
+    def generar_excel():
+        # Obtener los nombres de las columnas
+        columnas = tabla["columns"]
+        # Obtener los registros del Treeview
+        datos = [tabla.item(fila)["values"] for fila in tabla.get_children()]
+        # Verificar si existen datos
+        if not datos:
+            messagebox.showwarning("Aviso", "No hay datos para generar el reporte")
+            return
+        # Organizar la información
+        df = pd.DataFrame(datos, columns=columnas)
+        # Crear el archivo Excel
+        df.to_excel("reporte_inventario.xlsx", index=False)
+        # Abrir el archivo
+        os.startfile("reporte_inventario.xlsx")
+        
+    # SELECCIONAR FILA DE LA TABLA
+
+    tabla.bind("<<TreeviewSelect>>", seleccionar_fila)
+
+    # BOTONES
+
+    botones = tk.Frame(
+        marco_contenido,
+        bg="#F3E8FF"
+    )
+    botones.pack(pady=10)
+
+    acciones = [
+        ("Mostrar", cargar_inventario),
+        ("Insertar", insertar),
+        ("Buscar", buscar),
+        ("Actualizar", actualizar),
+        ("Eliminar", eliminar),
+        ("Limpiar", limpiar),
+        ("generar excel",generar_excel)
+    ]
+
+    for texto, funcion in acciones:
+        tk.Button(
+            botones,
+            text=texto,
+            width=13,
+            command=funcion,
+            bg="#674188",
+            fg="white",
+            font=("Arial", 9, "bold")
+        ).pack(side="left", padx=5)
+
+    cargar_inventario()
+# ==========================================
+# VENTAS
+# ==========================================
+
+
+
+def ventas():
+    limpiar_contenido()
+    marco_contenido.configure(bg="#F3E8FF")
+    crear_titulo(marco_contenido, "VENTAS")
+
+    formulario = tk.Frame(marco_contenido, bg="#F3E8FF")
+    formulario.pack(fill="x", padx=30, pady=10)
+
+    etiquetas = [
+        ("Código", "codigo"),
+        ("Producto", "nombre"),
+        ("Precio", "precio"),
+        ("Cant. Venta", "cantidad")
+    ]
+
+    cajas = {}
+
+    for i, (texto, clave) in enumerate(etiquetas):
+        tk.Label(
+            formulario,
+            text=texto,
+            bg="#F3E8FF",
+            fg="#512B81",
+            font=("Arial", 10, "bold")
+        ).grid(row=0, column=i*2, padx=5, pady=10)
+
+        caja = tk.Entry(
+            formulario,
+            width=14 if clave != "nombre" else 22
+        )
+        caja.grid(row=0, column=i*2+1, padx=5, pady=10)
+        cajas[clave] = caja
+
+    cajas["cantidad"].insert(0, "1")
+
+    # TOTAL ACUMULADO
+
+    marco_total = tk.Frame(marco_contenido, bg="#E2CFEA")
+    marco_total.pack(fill="x", padx=30, pady=5)
+
+    tk.Label(
+        marco_total,
+        text="TOTAL DE VENTAS:",
+        font=("Arial", 16, "bold"),
+        bg="#E2CFEA",
+        fg="#512B81"
+    ).pack(side="left", padx=20, pady=12)
+
+    etiqueta_total = tk.Label(
+        marco_total,
+        text="$0.00",
+        font=("Arial", 20, "bold"),
+        bg="#E2CFEA",
+        fg="#512B81"
+    )
+    etiqueta_total.pack(side="left", padx=10)
+
+    # TABLA DE HISTORIAL
+
+    tabla = ttk.Treeview(
+        marco_contenido,
+        columns=("id", "codigo", "nombre", "precio",
+                 "cantidad", "total", "fecha"),
+        show="headings",
+        height=11
+    )
+
+    for columna, titulo, ancho in [
+        ("id", "VENTA", 65),
+        ("codigo", "CÓDIGO", 80),
+        ("nombre", "PRODUCTO", 180),
+        ("precio", "PRECIO", 100),
+        ("cantidad", "CANTIDAD", 90),
+        ("total", "TOTAL", 110),
+        ("fecha", "FECHA", 170)
+    ]:
+        tabla.heading(columna, text=titulo)
+        tabla.column(columna, width=ancho, anchor="center")
+
+    tabla.pack(fill="x", padx=30, pady=15)
+
+    def limpiar():
+        for clave, caja in cajas.items():
+            caja.delete(0, tk.END)
+            if clave == "cantidad":
+                caja.insert(0, "1")
+
+    def cargar_ventas():
+        tabla.delete(*tabla.get_children())
+
+        filas = ejecutar_consulta(
+            """
+            SELECT venta_id, pro_codigo, pro_nombre,
+                   pro_precio, pro_cantidad, pro_total, fecha
+            FROM ventas
+            ORDER BY venta_id DESC
+            """,
+            obtener=True
+        )
+
+        if filas is not None:
+            for fila in filas:
+                tabla.insert("", tk.END, values=fila)
+
+    def calcular_total():
+        filas = ejecutar_consulta(
+            "SELECT COALESCE(SUM(pro_total), 0) FROM ventas",
+            obtener=True
+        )
+
+        if filas is not None:
+            total = filas[0][0] or 0
+            etiqueta_total.config(
+                text=f"${float(total):,.2f}"
+            )
+
+    def actualizar_ventas():
+        cargar_ventas()
+        calcular_total()
+
+    def buscar_producto():
+        codigo = cajas["codigo"].get().strip()
+
+        if not codigo.isdigit():
+            messagebox.showwarning("Aviso", "Ingresa un código válido.")
+            return
+
+        filas = ejecutar_consulta(
+            """
+            SELECT PRO_CODIGO, PRO_PRODUC, PRO_PRECIO
+            FROM existencias
+            WHERE PRO_CODIGO=%s
+            """,
+            (int(codigo),),
+            obtener=True
+        )
+
+        if filas:
+            cajas["nombre"].delete(0, tk.END)
+            cajas["precio"].delete(0, tk.END)
+
+            cajas["nombre"].insert(0, str(filas[0][1]))
+            cajas["precio"].insert(0, str(filas[0][2]))
+        else:
+            messagebox.showinfo("Aviso", "Producto no encontrado.")
+
+    def vender():
+        correcto = realizar_venta(
+            cajas["codigo"].get().strip(),
+            cajas["cantidad"].get().strip()
+        )
+
+        if correcto:
+            limpiar()
+            actualizar_ventas()
+    def generar_PDF():
+        # Crear archivo PDF
+        pdf = canvas.Canvas("reporte_pro.pdf")
+        # Agregar título
+        pdf.setFont("Helvetica-Bold", 16)
+        pdf.drawString(150, 750, "REPORTE DE PRODUCTOS")
+        # Agregar encabezados
+        pdf.setFont("Helvetica-Bold", 10)
+        pdf.drawString(50, 700, "VENTA")
+        pdf.drawString(100, 700, "CODIGO")
+        pdf.drawString(150, 700, "PRODUCTO")
+        pdf.drawString(200, 700, "PRECIO")
+        pdf.drawString(250, 700, "CANTIDAD")
+        pdf.drawString(300, 700, "TOTAL")
+        pdf.drawString(350, 700, "FECHA")
+        
+        # Obtener datos del Treeview
+        y = 670
+        for fila in tabla.get_children():
+            valores = tabla.item(fila)["values"]
+            pdf.setFont("Helvetica", 10)
+            pdf.drawString(50, y, str(valores[0]))
+            pdf.drawString(100, y, str(valores[1]))
+            pdf.drawString(150, y, str(valores[2]))
+            pdf.drawString(100, y, str(valores[3]))
+            pdf.drawString(250, y, str(valores[4]))
+            pdf.drawString(300, y, str(valores[5]))
+            pdf.drawString(350, y, str(valores[6]))
+                        
+            y -= 25
+        # Guardar PDF
+        pdf.save()
+        # Abrir archivo
+        os.startfile("reporte_pro.pdf")
+    tabla.bind(
+        "<<TreeviewSelect>>",
+        lambda event: seleccionar_venta(event)
+    )
+
+    def seleccionar_venta(event=None):
+        seleccion = tabla.selection()
+        if not seleccion:
+            return
+
+        valores = tabla.item(seleccion[0], "values")
+
+        for clave, valor in zip(
+            ["codigo", "nombre", "precio", "cantidad"],
+            [valores[1], valores[2], valores[3], valores[4]]
+        ):
+            cajas[clave].delete(0, tk.END)
+            cajas[clave].insert(0, str(valor))
+
+    botones = tk.Frame(marco_contenido, bg="#F3E8FF")
+    botones.pack(pady=10)
+
+    acciones = [
+        ("Vender", vender),
+        ("Buscar", buscar_producto),
+        ("Mostrar", actualizar_ventas),
+        ("Limpiar", limpiar),
+        ("Reporte PDF", generar_PDF)
+    ]
+
+    for texto, funcion in acciones:
+        color = "#28A745" if texto == "Vender" else "#674188"
+
+        tk.Button(
+            botones,
+            text=texto,
+            width=13,
+            command=funcion,
+            bg=color,
+            fg="white",
+            font=("Arial", 9, "bold")
+        ).pack(side="left", padx=5)
+
+    actualizar_ventas()
+ 
+
+def mostrar_catalogo():
+    limpiar_contenido()
+    marco_contenido
+    titulo = tk.Label(
+        marco_contenido,
+        text="CATÁLOGO DE PRODUCTOS",
+        font=("Arial", 18, "bold"),
+        bg="#F3E8FF",
+        fg="#512B81"
+    )
+    titulo.pack(pady=10)
+
+    ruta = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "catalogo_productos_papeleria_codigos_numericos.pdf"
+    )
+
+    if not os.path.exists(ruta):
+        messagebox.showerror("Error", "No se encontró el PDF")
+        return
+
+    documento = fitz.open(ruta)
+
+    lienzo = tk.Canvas(marco_contenido, bg="white")
+    lienzo.pack(side="left", fill="both", expand=True)
+
+    barra = ttk.Scrollbar(
+        marco_contenido,
+        orient="vertical",
+        command=lienzo.yview
+    )
+    barra.pack(side="right", fill="y")
+
+    lienzo.configure(yscrollcommand=barra.set)
+
+    marco = tk.Frame(lienzo, bg="white")
+    lienzo.create_window((0, 0), window=marco, anchor="nw")
+
+    imagenes = []
+
+    for pagina in documento:
+        pix = pagina.get_pixmap(matrix=fitz.Matrix(1.2, 1.2))
+        imagen = Image.frombytes(
+            "RGB",
+            [pix.width, pix.height],
+            pix.samples
+        )
+
+        foto = ImageTk.PhotoImage(imagen)
+        imagenes.append(foto)
+
+        etiqueta = tk.Label(marco, image=foto, bg="white")
+        etiqueta.pack(pady=8)
+
+    marco.update_idletasks()
+    lienzo.configure(scrollregion=lienzo.bbox("all"))
+
+    lienzo.imagenes = imagenes
+    lienzo.documento = documento
+# ==========================================
+# VENTANA PRINCIPAL
+# ==========================================
+
+def mostrar_principal():
+    global marco_contenido
+
+    ventana = tk.Tk()
+    ventana.title("Sistema de Control de Papelería")
+    ventana.geometry("1200x750")
+    ventana.minsize(950, 650)
+    ventana.configure(bg="#F3E8FF")
+
+    try:
+        ventana.state("zoomed")
+    except tk.TclError:
+        pass
+
+    marco_menu = tk.Frame(
+        ventana,
+        width=220,
+        bg="#512B81"
+    )
+    marco_menu.pack(side=tk.LEFT, fill=tk.Y)
+    marco_menu.pack_propagate(False)
+
+    tk.Label(
+        marco_menu,
+        text="PAPELERÍA",
+        font=("Arial", 18, "bold"),
+        bg="#512B81",
+        fg="white"
+    ).pack(pady=30)
+
+    marco_contenido = tk.Frame(
+        ventana,
+        bg="#F3E8FF"
+    )
+    marco_contenido.pack(
+        side=tk.RIGHT,
+        expand=True,
+        fill=tk.BOTH
+    )
+
+    crear_boton(
+        marco_menu, "INICIO", mostrar_inicio
+    ).pack(pady=10)
+
+    crear_boton(
+        marco_menu, "PRODUCTOS", mostrar_productos
+    ).pack(pady=10)
+
+    crear_boton(
+        marco_menu, "INVENTARIO", INVENTARIO
+    ).pack(pady=10)
+
+    crear_boton(
+        marco_menu, "VENTAS", ventas
+    ).pack(pady=10)
+
+    crear_boton(
+        marco_menu, "SALIR", ventana.destroy
+    ).pack(pady=10)
+    crear_boton(
+        marco_menu,"CATÁLOGO",mostrar_catalogo,
+    ).pack(pady=10)
+    mostrar_inicio()
+    ventana.mainloop()
+   
+
+if __name__ == "__main__":
+    mostrar_principal()
